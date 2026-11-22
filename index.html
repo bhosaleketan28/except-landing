@@ -88,6 +88,9 @@ section.txt{padding:144px 0}
 .d-list{display:flex;flex-direction:column;padding:8px;gap:2px}
 .d-item{flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 20px;border-radius:10px;text-align:left;font:inherit;color:inherit;background:none;border:0;cursor:pointer;transition:background .3s}
 .d-item.is-active{background:rgba(255,255,255,.065)}
+.d-item{position:relative;overflow:hidden}
+.dd.auto .d-item.is-active::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:100%;background:#00E37A;transform-origin:0 50%;animation:prog 3.4s linear both}
+@keyframes prog{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .d-item strong{font:500 17px/1.25 "Space Grotesk",sans-serif;letter-spacing:-.01em;margin-bottom:4px}
 .d-item span{font-size:14px;line-height:1.42;color:rgba(255,255,255,.6)}
 .cx :focus-visible{outline:2px solid #fff;outline-offset:-3px;border-radius:10px}
@@ -333,9 +336,14 @@ footer img{height:20px;width:auto}
   theme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
 
   // What Mastech connects: point at a row, its picture fades in.
-  var ditems = [].slice.call(document.querySelectorAll('.d-item')), dimgs = [].slice.call(document.querySelectorAll('.d-media .m'));
-  function show(i) { ditems.forEach(function (b, j) { b.classList.toggle('is-active', j === i); }); dimgs.forEach(function (m, j) { m.classList.toggle('is-active', j === i); }); }
-  ditems.forEach(function (b, i) { ['pointerenter', 'focus', 'click'].forEach(function (ev) { b.addEventListener(ev, function () { show(i); }); }); });
+  var ditems = [].slice.call(document.querySelectorAll('.d-item')), dimgs = [].slice.call(document.querySelectorAll('.d-media .m')), dd = document.querySelector('.dd'), cur = 0, auto, wait, seen = false;
+  function show(i) { cur = i; ditems.forEach(function (b, j) { b.classList.toggle('is-active', j === i); }); dimgs.forEach(function (m, j) { m.classList.toggle('is-active', j === i); }); }
+  // On phones and tablets nobody hovers, so the panel steps through the five rows by itself while it is on screen.
+  var noHover = matchMedia('(hover: none), (max-width: 1000px)'), calm = matchMedia('(prefers-reduced-motion: reduce)');
+  function play() { clearTimeout(wait); if (auto || !seen || !noHover.matches || calm.matches) return; dd.classList.add('auto'); auto = setInterval(function () { show((cur + 1) % ditems.length); }, 3400); }
+  function pause() { clearInterval(auto); auto = null; dd.classList.remove('auto'); }
+  ditems.forEach(function (b, i) { ['pointerenter', 'focus', 'click'].forEach(function (ev) { b.addEventListener(ev, function () { pause(); show(i); clearTimeout(wait); wait = setTimeout(play, 9000); }); }); });
+  if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { seen = es[0].isIntersecting; if (seen) play(); else { pause(); clearTimeout(wait); } }, { threshold: 0.35 }).observe(dd);
 
   // Not only stock: pick a rule, see its record.
   var rules = [].slice.call(document.querySelectorAll('.rule')), imgs = [].slice.call(document.querySelectorAll('#media img'));
